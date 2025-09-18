@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"npm run dev --prefix backend\"",
     "build": "vite build && npm run build --prefix backend",
-    "start": "NODE_ENV=production node backend/dist/server.js",
+    "start": "NODE_ENV=production node backend/dist/backend/server.js",
     "postinstall": "npm install --prefix backend"
   },
   "dependencies": {

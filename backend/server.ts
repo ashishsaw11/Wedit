@@ -1,6 +1,4 @@
 
-
-
 // FIX: Use standard ES module import for Express and its types to be compatible with the project's ES module target.
 // FIX: Aliased Request and Response to avoid potential conflicts with global types (e.g. from fetch API).
 import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
@@ -312,7 +310,7 @@ communityRouter.post('/share-prompt', async (req: ExpressRequest, res: ExpressRe
             contents: moderationPrompt
         });
 
-        if (!moderationResponse.text.toUpperCase().includes('SAFE')) {
+        if (!moderationResponse.text?.toUpperCase().includes('SAFE')) {
             return res.status(400).json({ error: 'Your prompt was rejected by our AI safety filter. Please be respectful and try again.' });
         }
         

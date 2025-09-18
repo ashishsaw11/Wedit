@@ -2,9 +2,9 @@
   "name": "magic-editor-backend",
   "version": "1.0.0",
   "description": "Backend server for Magic Editor",
-  "main": "dist/server.js",
+  "main": "dist/backend/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/backend/server.js",
     "build": "tsc",
     "dev": "ts-node-dev server.ts"
   },
