@@ -1,0 +1,5 @@
+{
+  "name": "Magic-editor",
+  "description": "An application that uses the Gemini 'nano-banana' model to edit user-uploaded photos based on text prompts. Upload an image, describe your desired changes, and let the AI generate a new version. Explore trending prompts and save your creations.",
+  "requestFramePermissions": []
+}
