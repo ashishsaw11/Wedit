@@ -1,7 +1,9 @@
 
+
+
 // FIX: Use standard ES module import for Express and its types to be compatible with the project's ES module target.
 // FIX: Aliased Request and Response to avoid potential conflicts with global types (e.g. from fetch API).
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs/promises';
@@ -100,8 +102,8 @@ const processImageApiResponse = (response: any): EditedResult => {
 
 const apiRouter = express.Router();
 
-// FIX: Correctly typed request and response objects from the express namespace.
-apiRouter.post('/classify-image', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+apiRouter.post('/classify-image', async (req: Request, res: Response) => {
     try {
         const { imageData } = req.body;
         if (!imageData) {
@@ -124,8 +126,8 @@ apiRouter.post('/classify-image', async (req: ExpressRequest, res: ExpressRespon
     }
 });
 
-// FIX: Correctly typed request and response objects from the express namespace.
-apiRouter.post('/improve-prompt', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+apiRouter.post('/improve-prompt', async (req: Request, res: Response) => {
     try {
         const { prompt } = req.body;
         if (!prompt) {
@@ -147,8 +149,8 @@ apiRouter.post('/improve-prompt', async (req: ExpressRequest, res: ExpressRespon
     }
 });
 
-// FIX: Correctly typed request and response objects from the express namespace.
-apiRouter.post('/edit-image', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+apiRouter.post('/edit-image', async (req: Request, res: Response) => {
     try {
         const { imageData, prompt } = req.body;
         if (!imageData || !prompt) {
@@ -175,8 +177,8 @@ apiRouter.post('/edit-image', async (req: ExpressRequest, res: ExpressResponse) 
     }
 });
 
-// FIX: Correctly typed request and response objects from the express namespace.
-apiRouter.post('/combine-images', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+apiRouter.post('/combine-images', async (req: Request, res: Response) => {
     try {
         const { image1Data, image2Data, prompt } = req.body;
         if (!image1Data || !image2Data || !prompt) {
@@ -204,8 +206,8 @@ apiRouter.post('/combine-images', async (req: ExpressRequest, res: ExpressRespon
     }
 });
 
-// FIX: Correctly typed request and response objects from the express namespace.
-apiRouter.post('/generate-video', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+apiRouter.post('/generate-video', async (req: Request, res: Response) => {
     try {
         const { prompt, imageData } = req.body;
         if (!prompt) {
@@ -230,8 +232,8 @@ apiRouter.post('/generate-video', async (req: ExpressRequest, res: ExpressRespon
     }
 });
 
-// FIX: Correctly typed request and response objects from the express namespace.
-apiRouter.post('/video-status', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+apiRouter.post('/video-status', async (req: Request, res: Response) => {
     try {
         const { operationName } = req.body;
         if (!operationName) {
@@ -274,8 +276,8 @@ apiRouter.post('/video-status', async (req: ExpressRequest, res: ExpressResponse
 // --- Community Endpoints ---
 const communityRouter = express.Router();
 
-// FIX: Correctly typed request and response objects from the express namespace.
-communityRouter.get('/prompts', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+communityRouter.get('/prompts', async (req: Request, res: Response) => {
     try {
         const communityPrompts = await readPromptsFromFile();
         // Return prompts in reverse chronological order
@@ -286,8 +288,8 @@ communityRouter.get('/prompts', async (req: ExpressRequest, res: ExpressResponse
     }
 });
 
-// FIX: Correctly typed request and response objects from the express namespace.
-communityRouter.post('/share-prompt', async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Corrected request and response types to use direct imports from express.
+communityRouter.post('/share-prompt', async (req: Request, res: Response) => {
     try {
         const { name, email, phone, title, prompt } = req.body;
         if (!name || !email || !phone || !title || !prompt) {
@@ -345,12 +347,13 @@ app.use('/api/community', communityRouter);
 // --- Static Asset Serving ---
 // Serve the built Vite app in production
 if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '..', '..', 'dist')));
+    const frontendDistPath = path.join(__dirname, '..', '..', '..', 'dist');
+    app.use(express.static(frontendDistPath));
 
     // Handle all other routes by serving the index.html, allowing React to handle routing
-    // FIX: Correctly typed request and response objects from the express namespace.
-    app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
-      res.sendFile(path.join(__dirname, '..', '..', 'dist', 'index.html'));
+    // FIX: Corrected request and response types to use direct imports from express.
+    app.get('*', (req: Request, res: Response) => {
+      res.sendFile(path.join(frontendDistPath, 'index.html'));
     });
 }
 
