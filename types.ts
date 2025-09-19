@@ -57,3 +57,8 @@ export interface CommunityPrompt {
   prompt: string;
   createdAt: string;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+}

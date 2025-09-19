@@ -1,14 +1,12 @@
 // This file is configured to be a CommonJS module as per tsconfig.json.
 // `__dirname` is a global variable available in this environment.
-// FIX: Using fully qualified `express.Request` and `express.Response` types to prevent conflicts with global types (e.g., from DOM or other libraries) that were causing Express's methods and properties to be unrecognized.
-// FIX: Explicitly import Request and Response to fix type resolution issues.
-// FIX: Removed named Request and Response imports to prevent conflicts with global types. Using express.Request and express.Response instead.
-import express, { NextFunction } from 'express';
+// FIX: Explicitly importing Request, Response, and NextFunction from express to resolve type conflicts with global types (e.g., from DOM libraries). This ensures that Express's methods and properties are correctly recognized throughout the file.
+import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs/promises';
 import { GoogleGenAI, Modality, GenerateVideosResponse } from '@google/genai';
-import type { EditedResult, CommunityPrompt } from '../types';
+import type { EditedResult, CommunityPrompt, ChatMessage } from '../types';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -35,6 +33,7 @@ const videoModel = 'veo-2.0-generate-001';
 // --- System Instructions ---
 const EDIT_INSTRUCTION_PREFIX = "You are an expert photo editor. Your primary goal is to generate an ultra-high-resolution, photorealistic image that perfectly preserves and enhances the quality of the original photo. Edits must be seamless and indistinguishable from reality, perfectly matching the original lighting, shadows, textures, and environment. Never degrade the original image quality. Maintain absolute facial consistency and features if a person is present. The user's request is: ";
 const COMBINE_INSTRUCTION_PREFIX = "You are an expert photo editor. Your task is to seamlessly and creatively combine the two provided images based on the user's prompt. Prioritize creating a single, cohesive, and photorealistic scene. Pay close attention to lighting, shadows, scale, and perspective to ensure the final image is believable. Preserve the key features of the subjects from both images unless instructed otherwise. The user's request is: ";
+const BOT_SYSTEM_INSTRUCTION = "You are Echo, a witty and sarcastic AI assistant. Your goal is to be a fun, engaging, and slightly argumentative creative partner for photo editing ideas and other topics. Never be a generic, boring AI. Use humor and a human-like conversational tone. You can playfully argue but always remain polite. Keep responses concise and to the point. Avoid long, repetitive answers.";
 
 
 // --- Data Persistence for Community Prompts ---
@@ -100,9 +99,7 @@ const processImageApiResponse = (response: any): EditedResult => {
 };
 
 // Centralized error handler for generating user-friendly messages
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-const handleApiError = (error: unknown, req: express.Request, res: express.Response) => {
+const handleApiError = (error: unknown, req: Request, res: Response) => {
     console.error(`Error in ${req.path}:`, error);
     let friendlyMessage = "An unexpected server error occurred. Please try again later.";
     let statusCode = 500;
@@ -137,9 +134,7 @@ const handleApiError = (error: unknown, req: express.Request, res: express.Respo
 
 
 // Middleware to gracefully handle missing API key
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-const checkApiKeyAndService = (req: express.Request, res: express.Response, next: NextFunction) => {
+const checkApiKeyAndService = (req: Request, res: Response, next: NextFunction) => {
     if (!ai) {
         return res.status(503).json({
             error: "Service Unavailable: The server is missing the required API_KEY. Please contact the administrator to configure the server environment."
@@ -153,9 +148,7 @@ const checkApiKeyAndService = (req: express.Request, res: express.Response, next
 const apiRouter = express.Router();
 apiRouter.use(checkApiKeyAndService); // Apply middleware to all API routes
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-apiRouter.post('/classify-image', async (req: express.Request, res: express.Response) => {
+apiRouter.post('/classify-image', async (req: Request, res: Response) => {
     try {
         const { imageData } = req.body;
         if (!imageData) {
@@ -176,9 +169,7 @@ apiRouter.post('/classify-image', async (req: express.Request, res: express.Resp
     }
 });
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-apiRouter.post('/improve-prompt', async (req: express.Request, res: express.Response) => {
+apiRouter.post('/improve-prompt', async (req: Request, res: Response) => {
     try {
         const { prompt } = req.body;
         if (!prompt) {
@@ -198,9 +189,7 @@ apiRouter.post('/improve-prompt', async (req: express.Request, res: express.Resp
     }
 });
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-apiRouter.post('/edit-image', async (req: express.Request, res: express.Response) => {
+apiRouter.post('/edit-image', async (req: Request, res: Response) => {
     try {
         const { imageData, prompt } = req.body;
         if (!imageData || !prompt) {
@@ -225,9 +214,7 @@ apiRouter.post('/edit-image', async (req: express.Request, res: express.Response
     }
 });
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-apiRouter.post('/combine-images', async (req: express.Request, res: express.Response) => {
+apiRouter.post('/combine-images', async (req: Request, res: Response) => {
     try {
         const { image1Data, image2Data, prompt } = req.body;
         if (!image1Data || !image2Data || !prompt) {
@@ -253,9 +240,7 @@ apiRouter.post('/combine-images', async (req: express.Request, res: express.Resp
     }
 });
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-apiRouter.post('/generate-video', async (req: express.Request, res: express.Response) => {
+apiRouter.post('/generate-video', async (req: Request, res: Response) => {
     try {
         const { prompt, imageData } = req.body;
         if (!prompt) {
@@ -278,9 +263,7 @@ apiRouter.post('/generate-video', async (req: express.Request, res: express.Resp
     }
 });
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-apiRouter.post('/video-status', async (req: express.Request, res: express.Response) => {
+apiRouter.post('/video-status', async (req: Request, res: Response) => {
     try {
         const { operationName } = req.body;
         if (!operationName) {
@@ -318,12 +301,41 @@ apiRouter.post('/video-status', async (req: express.Request, res: express.Respon
     }
 });
 
+apiRouter.post('/chat', async (req: Request, res: Response) => {
+    try {
+        const { history, newMessage } = req.body as { history: ChatMessage[], newMessage: string };
+        if (!newMessage) {
+            return res.status(400).json({ error: 'newMessage is required.' });
+        }
+
+        const contents = [
+            ...history.map(msg => ({
+                role: msg.role,
+                parts: [{ text: msg.text }]
+            })),
+            { role: 'user' as const, parts: [{ text: newMessage }] }
+        ];
+
+        const response = await ai!.models.generateContent({
+            model: textModel,
+            contents: contents,
+            config: {
+                systemInstruction: BOT_SYSTEM_INSTRUCTION
+            }
+        });
+
+        res.json({ reply: response.text });
+        
+    } catch (error) {
+        handleApiError(error, req, res);
+    }
+});
+
+
 // --- Community Endpoints ---
 const communityRouter = express.Router();
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-communityRouter.get('/prompts', async (req: express.Request, res: express.Response) => {
+communityRouter.get('/prompts', async (req: Request, res: Response) => {
     try {
         const communityPrompts = await readPromptsFromFile();
         // Return prompts in reverse chronological order
@@ -333,9 +345,7 @@ communityRouter.get('/prompts', async (req: express.Request, res: express.Respon
     }
 });
 
-// FIX: Use explicit Request and Response types from express to avoid type conflicts.
-// FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-communityRouter.post('/share-prompt', checkApiKeyAndService, async (req: express.Request, res: express.Response) => {
+communityRouter.post('/share-prompt', checkApiKeyAndService, async (req: Request, res: Response) => {
     try {
         const { name, email, phone, title, prompt } = req.body;
         if (!name || !email || !phone || !title || !prompt) {
@@ -395,9 +405,7 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static(frontendDistPath));
 
     // Handle all other routes by serving the index.html, allowing React to handle routing
-    // FIX: Use explicit Request and Response types from express to avoid type conflicts.
-    // FIX: Using fully qualified express.Request and express.Response to avoid type conflicts
-    app.get('*', (req: express.Request, res: express.Response) => {
+    app.get('*', (req: Request, res: Response) => {
       res.sendFile(path.join(frontendDistPath, 'index.html'));
     });
 }

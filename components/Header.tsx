@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { WandIcon, SparklesIcon, HistoryIcon, ALogoIcon, MailIcon, SunIcon, MoonIcon, PhotoStackIcon, VideoIcon, UsersIcon, ChevronDownIcon } from './IconComponents';
+import { WandIcon, SparklesIcon, HistoryIcon, ALogoIcon, MailIcon, SunIcon, MoonIcon, PhotoStackIcon, VideoIcon, UsersIcon, ChevronDownIcon, ChatBubbleIcon } from './IconComponents';
 
-type Tab = 'Editor' | 'Combine' | 'Video' | 'Trending' | 'History' | 'Community';
+type Tab = 'Editor' | 'Combine' | 'Video' | 'Trending' | 'History' | 'Community' | 'Bot';
 type Theme = 'light' | 'dark';
 
 interface HeaderProps {
@@ -20,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, theme, toggleT
     { id: 'Editor', label: 'Editor', icon: <WandIcon className="w-5 h-5 mr-3" /> },
     { id: 'Combine', label: 'Combine', icon: <PhotoStackIcon className="w-5 h-5 mr-3" /> },
     { id: 'Video', label: 'Video', icon: <VideoIcon className="w-5 h-5 mr-3" /> },
+    { id: 'Bot', label: 'Bot', icon: <ChatBubbleIcon className="w-5 h-5 mr-3" /> },
     { id: 'Trending', label: 'Trending', icon: <SparklesIcon className="w-5 h-5 mr-3" /> },
     { id: 'Community', label: 'Community', icon: <UsersIcon className="w-5 h-5 mr-3" /> },
     { id: 'History', label: 'History', icon: <HistoryIcon className="w-5 h-5 mr-3" /> },

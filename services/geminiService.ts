@@ -1,6 +1,69 @@
-import type { EditedResult, CommunityPrompt } from '../types';
+import type { EditedResult, CommunityPrompt, ChatMessage } from '../types';
 
 const API_BASE_URL = '/api'; // Using a relative URL for proxying
+
+// --- API Request Queue ---
+// This queue ensures we don't hit API rate limits by sending too many requests at once.
+const requestQueue: (() => void)[] = [];
+let isProcessing = false;
+const RATE_LIMIT_DELAY = 1500; // 1.5-second delay between API calls to stay within free tier limits.
+
+const processQueue = () => {
+    if (isProcessing || requestQueue.length === 0) {
+        return;
+    }
+    isProcessing = true;
+    const task = requestQueue.shift();
+    if (task) {
+        task();
+    }
+};
+
+const scheduleNext = () => {
+    setTimeout(() => {
+        isProcessing = false;
+        processQueue();
+    }, RATE_LIMIT_DELAY);
+};
+
+const queuedPostToApi = <T>(endpoint: string, body: object): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+        const task = async () => {
+            try {
+                const result = await postToApi<T>(endpoint, body);
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            } finally {
+                scheduleNext();
+            }
+        };
+        requestQueue.push(task);
+        if (!isProcessing) {
+            processQueue();
+        }
+    });
+};
+
+const queuedGetFromApi = <T>(endpoint: string): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+        const task = async () => {
+            try {
+                const result = await getFromApi<T>(endpoint);
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            } finally {
+                scheduleNext();
+            }
+        };
+        requestQueue.push(task);
+        if (!isProcessing) {
+            processQueue();
+        }
+    });
+};
+
 
 // Helper to convert a File to a base64 string and mimeType
 const fileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
@@ -55,7 +118,7 @@ async function getFromApi<T>(endpoint: string): Promise<T> {
 
 export const classifyImageForMale = async (imageFile: File): Promise<boolean> => {
     const imageData = await fileToBase64(imageFile);
-    const response = await postToApi<{ classification: string }>('/classify-image', { imageData });
+    const response = await queuedPostToApi<{ classification: string }>('/classify-image', { imageData });
     return response.classification.trim().toLowerCase().includes('yes');
 };
 
@@ -63,19 +126,19 @@ export const improvePrompt = async (prompt: string): Promise<string> => {
     if (!prompt.trim()) {
         throw new Error("Prompt cannot be empty.");
     }
-    const response = await postToApi<{ improvedPrompt: string }>('/improve-prompt', { prompt });
+    const response = await queuedPostToApi<{ improvedPrompt: string }>('/improve-prompt', { prompt });
     return response.improvedPrompt;
 }
 
 export const editImageWithNanoBanana = async (imageFile: File, prompt: string): Promise<EditedResult> => {
   const imageData = await fileToBase64(imageFile);
-  return postToApi<EditedResult>('/edit-image', { imageData, prompt });
+  return queuedPostToApi<EditedResult>('/edit-image', { imageData, prompt });
 };
 
 export const combineImagesWithNanoBanana = async (imageFile1: File, imageFile2: File, prompt: string): Promise<EditedResult> => {
   const image1Data = await fileToBase64(imageFile1);
   const image2Data = await fileToBase64(imageFile2);
-  return postToApi<EditedResult>('/combine-images', { image1Data, image2Data, prompt });
+  return queuedPostToApi<EditedResult>('/combine-images', { image1Data, image2Data, prompt });
 };
 
 export const generateVideoWithVeo = async (prompt: string, imageFile: File | null, onProgress: (message: string) => void): Promise<EditedResult> => {
@@ -84,7 +147,7 @@ export const generateVideoWithVeo = async (prompt: string, imageFile: File | nul
   
   onProgress("Sending request to the video model...");
   // Start the video generation, get back an operation name
-  const startResponse = await postToApi<{ operationName: string }>('/generate-video', { prompt, imageData });
+  const startResponse = await queuedPostToApi<{ operationName: string }>('/generate-video', { prompt, imageData });
   const { operationName } = startResponse;
   
   onProgress("Video generation started. Polling for results...");
@@ -99,6 +162,7 @@ export const generateVideoWithVeo = async (prompt: string, imageFile: File | nul
     attempts++;
     
     try {
+        // Polling doesn't need to be in the main user queue
         const statusResponse = await postToApi<{ done: boolean; result?: EditedResult; metadata?: any }>('/video-status', { operationName });
         
         onProgress(`Checking status: ${statusResponse.metadata?.state || 'in_progress'}`);
@@ -124,12 +188,18 @@ export const generateVideoWithVeo = async (prompt: string, imageFile: File | nul
   return finalResult;
 };
 
+// --- Bot Endpoint ---
+export const sendMessageToBot = async (history: ChatMessage[], newMessage: string): Promise<string> => {
+    const response = await queuedPostToApi<{ reply: string }>('/chat', { history, newMessage });
+    return response.reply;
+};
+
 // --- Community Endpoints ---
 
 export const getCommunityPrompts = async (): Promise<CommunityPrompt[]> => {
-    return getFromApi<CommunityPrompt[]>('/community/prompts');
+    return queuedGetFromApi<CommunityPrompt[]>('/community/prompts');
 };
 
 export const shareCommunityPrompt = async (data: Omit<CommunityPrompt, 'id' | 'createdAt'>): Promise<{ message: string }> => {
-    return postToApi<{ message: string }>('/community/share-prompt', data);
+    return queuedPostToApi<{ message: string }>('/community/share-prompt', data);
 };

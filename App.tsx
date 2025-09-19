@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import type { EditedResult, OriginalImage, OriginalVideo, HistoryItem, PromptCategory, PromptIdea, UserInfo, VideoPreset, CommunityPrompt } from './types';
-import { editImageWithNanoBanana, improvePrompt, classifyImageForMale, combineImagesWithNanoBanana, generateVideoWithVeo, getCommunityPrompts, shareCommunityPrompt } from './services/geminiService';
+import type { EditedResult, OriginalImage, OriginalVideo, HistoryItem, PromptCategory, PromptIdea, UserInfo, VideoPreset, CommunityPrompt, ChatMessage } from './types';
+import { editImageWithNanoBanana, improvePrompt, classifyImageForMale, combineImagesWithNanoBanana, generateVideoWithVeo, getCommunityPrompts, shareCommunityPrompt, sendMessageToBot } from './services/geminiService';
 import { sendUserInfoToDeveloper } from './services/userDataService';
 import Header from './components/Header';
 import ImageUploader from './components/ImageUploader';
@@ -19,9 +19,10 @@ import {
   UserIcon,
   UploadIcon,
   UsersIcon,
+  PaperAirplaneIcon,
 } from './components/IconComponents';
 
-type Tab = 'Editor' | 'Combine' | 'Video' | 'Trending' | 'Community' | 'History';
+type Tab = 'Editor' | 'Combine' | 'Video' | 'Trending' | 'Community' | 'History' | 'Bot';
 type Theme = 'light' | 'dark';
 type Gender = 'male' | 'female' | 'unisex';
 type Language = 'en' | 'hi';
@@ -1000,6 +1001,90 @@ const CommunityView: React.FC<CommunityViewProps> = ({ prompts, isLoading, onRef
     );
 };
 
+interface BotViewProps {
+    messages: ChatMessage[];
+    onSendMessage: (message: string) => void;
+    isBotTyping: boolean;
+    error: string | null;
+}
+
+const BotView: React.FC<BotViewProps> = ({ messages, onSendMessage, isBotTyping, error }) => {
+    const [input, setInput] = useState('');
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, isBotTyping]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (input.trim() && !isBotTyping) {
+            onSendMessage(input);
+            setInput('');
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-[calc(100vh-220px)] max-w-3xl mx-auto bg-[var(--card-bg-color)] border border-[var(--border-color)] rounded-xl shadow-lg">
+            <div className="flex-grow p-4 overflow-y-auto">
+                <div className="space-y-4">
+                    {messages.map((msg, index) => (
+                        <div key={index} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                           <div
+                                className={`px-4 py-2 rounded-2xl max-w-md md:max-w-lg ${
+                                    msg.role === 'user'
+                                    ? 'bg-[var(--accent-color)] text-white rounded-br-none'
+                                    : 'bg-[var(--bg-color)] text-[var(--text-color)] rounded-bl-none border border-[var(--border-color)]'
+                                }`}
+                            >
+                                <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                            </div>
+                        </div>
+                    ))}
+                    {isBotTyping && (
+                        <div className="flex items-end gap-2 justify-start">
+                            <div className="px-4 py-2 rounded-2xl bg-[var(--bg-color)] text-[var(--text-color)] rounded-bl-none border border-[var(--border-color)]">
+                                <div className="flex items-center justify-center gap-1.5">
+                                    <span className="h-1.5 w-1.5 bg-[var(--text-color)]/50 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
+                                    <span className="h-1.5 w-1.5 bg-[var(--text-color)]/50 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
+                                    <span className="h-1.5 w-1.5 bg-[var(--text-color)]/50 rounded-full animate-pulse"></span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div ref={messagesEndRef} />
+            </div>
+            {error && <div className="px-4 pb-2 text-xs text-red-500">{error}</div>}
+            <div className="p-4 border-t border-[var(--border-color)] bg-[var(--card-bg-color)] rounded-b-xl">
+                <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Ask Echo anything..."
+                        className="w-full p-2.5 border border-[var(--border-color)] rounded-lg bg-[var(--input-bg-color)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition-shadow"
+                        disabled={isBotTyping}
+                        aria-label="Chat input"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!input.trim() || isBotTyping}
+                        className="p-3 bg-[var(--accent-color)] text-white rounded-lg hover:bg-[var(--accent-color-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Send message"
+                    >
+                        <PaperAirplaneIcon className="w-5 h-5" />
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 
 const extractFrameFromVideo = (videoFile: File, time: number = 0): Promise<File> => {
     return new Promise((resolve, reject) => {
@@ -1059,6 +1144,12 @@ const App: React.FC = () => {
   const [isCommunityLoading, setIsCommunityLoading] = useState(false);
   const [language, setLanguage] = useState<Language>('en');
 
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+
+
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -1095,6 +1186,14 @@ const App: React.FC = () => {
         if (interval) clearInterval(interval);
     };
   }, [isLoading, activeTab, loadingMessage]);
+
+    // Initialize bot with a welcome message
+    useEffect(() => {
+        setChatMessages([{
+            role: 'model',
+            text: "Hey there! I'm Echo. Got any brilliant (or brilliantly bad) photo ideas? Lay 'em on me."
+        }]);
+    }, []);
 
 
   const fetchCommunityPrompts = useCallback(async () => {
@@ -1259,6 +1358,27 @@ const App: React.FC = () => {
         setIsLoading(false);
     }
   }
+
+    const handleSendChatMessage = async (message: string) => {
+        const newUserMessage: ChatMessage = { role: 'user', text: message };
+        const updatedHistory = [...chatMessages, newUserMessage];
+        setChatMessages(updatedHistory);
+        setIsBotTyping(true);
+        setChatError(null);
+
+        try {
+            const reply = await sendMessageToBot(chatMessages, message);
+            const newBotMessage: ChatMessage = { role: 'model', text: reply };
+            setChatMessages([...updatedHistory, newBotMessage]);
+        } catch (err) {
+            const errorMessage = getFriendlyErrorMessage(err);
+            setChatError(errorMessage);
+            const errorBotMessage: ChatMessage = { role: 'model', text: `Oops, I hit a snag. ${errorMessage}` };
+            setChatMessages([...updatedHistory, errorBotMessage]);
+        } finally {
+            setIsBotTyping(false);
+        }
+    };
   
   const handleImprovePrompt = async () => {
     if(!prompt.trim() || isLoading) return;
@@ -1427,6 +1547,13 @@ const App: React.FC = () => {
             onGenerate={handleVideoGenerate}
             onDownload={downloadContent}
             onCopyPrompt={copyToClipboard}
+        />;
+      case 'Bot':
+        return <BotView
+            messages={chatMessages}
+            onSendMessage={handleSendChatMessage}
+            isBotTyping={isBotTyping}
+            error={chatError}
         />;
       case 'Trending':
         return <TrendingView 
