@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { EditedResult, OriginalImage, OriginalVideo, HistoryItem, PromptCategory, PromptIdea, UserInfo, VideoPreset, CommunityPrompt } from './types';
 import { editImageWithNanoBanana, improvePrompt, classifyImageForMale, combineImagesWithNanoBanana, generateVideoWithVeo, getCommunityPrompts, shareCommunityPrompt } from './services/geminiService';
@@ -194,6 +195,60 @@ const disclaimerContent = {
 
 // --- Sub-Components ---
 
+const ErrorDisplay: React.FC<{ error: string | null }> = ({ error }) => {
+  if (!error) return null;
+  return (
+    <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+      <div className="flex">
+        <div className="py-1"><AlertTriangleIcon className="h-5 w-5 text-red-500 mr-3" /></div>
+        <div>
+          <p className="font-bold">Error</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface PromptInputProps {
+    prompt: string;
+    onPromptChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+    onImprovePrompt: () => void;
+    isLoading: boolean;
+    promptInputRef: React.RefObject<HTMLTextAreaElement>;
+    id: string;
+    label: string;
+    placeholder: string;
+    rows?: number;
+}
+
+const PromptInput: React.FC<PromptInputProps> = ({ prompt, onPromptChange, onImprovePrompt, isLoading, promptInputRef, id, label, placeholder, rows = 3 }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-[var(--text-color-strong)] mb-2">{label}</label>
+        <div className="relative">
+            <textarea
+                ref={promptInputRef}
+                id={id}
+                value={prompt}
+                onChange={onPromptChange}
+                placeholder={placeholder}
+                className="w-full p-3 pr-24 border border-[var(--border-color)] rounded-lg bg-[var(--input-bg-color)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition-shadow resize-none overflow-hidden"
+                rows={rows}
+                disabled={isLoading}
+            />
+            <button
+                onClick={onImprovePrompt}
+                disabled={isLoading || !prompt.trim()}
+                className="absolute top-2 right-2 flex items-center px-3 py-1.5 bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-xs font-semibold rounded-full hover:bg-[var(--accent-color)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Improve prompt with AI"
+            >
+                <SparklesIcon className="w-4 h-4 mr-1"/>
+                Improve
+            </button>
+        </div>
+    </div>
+);
+
 const DisclaimerModal: React.FC<{ onAgree: () => void; language: Language; setLanguage: (lang: Language) => void; }> = ({ onAgree, language, setLanguage }) => {
     const content = disclaimerContent[language];
 
@@ -249,7 +304,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, isLoading, loadin
         <div className="animate-pulse">
           <SparklesIcon className="w-16 h-16 text-[var(--text-color)]/20 mb-4" />
         </div>
-        <p className="text-[var(--text-color)]/70 font-semibold">Generating your masterpiece...</p>
+        <p className="text-[var(--text-color)]/70 font-semibold">{loadingMessage.includes('...') ? 'Generating your masterpiece...' : 'Please wait...'}</p>
         <p className="text-[var(--text-color)]/50 mt-2 text-sm text-center px-4">{loadingMessage}</p>
       </div>
     );
@@ -310,30 +365,16 @@ const EditorView: React.FC<EditorViewProps> = ({
   <div className="flex flex-col lg:flex-row gap-8">
     <div className="w-full lg:w-1/2 flex flex-col gap-4">
       <ImageUploader onImageUpload={onImageUpload} originalImage={originalImage} isLoading={isLoading} />
-      <div>
-        <label htmlFor="prompt-editor" className="block text-sm font-medium text-[var(--text-color-strong)] mb-2">2. Describe Your Edit</label>
-        <div className="relative">
-           <textarea
-              ref={promptInputRef}
-              id="prompt-editor"
-              value={prompt}
-              onChange={onPromptChange}
-              placeholder="e.g., 'Change my hair to pink' or 'Make it look like a vintage photograph'"
-              className="w-full p-3 pr-24 border border-[var(--border-color)] rounded-lg bg-[var(--input-bg-color)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition-shadow resize-none overflow-hidden"
-              rows={3}
-              disabled={isLoading}
-            />
-            <button 
-              onClick={onImprovePrompt}
-              disabled={isLoading || !prompt.trim()}
-              className="absolute top-2 right-2 flex items-center px-3 py-1.5 bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-xs font-semibold rounded-full hover:bg-[var(--accent-color)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Improve prompt with AI"
-            >
-              <SparklesIcon className="w-4 h-4 mr-1"/>
-              Improve
-            </button>
-        </div>
-      </div>
+      <PromptInput 
+        prompt={prompt}
+        onPromptChange={onPromptChange}
+        onImprovePrompt={onImprovePrompt}
+        isLoading={isLoading}
+        promptInputRef={promptInputRef}
+        id="prompt-editor"
+        label="2. Describe Your Edit"
+        placeholder="e.g., 'Change my hair to pink' or 'Make it look like a vintage photograph'"
+      />
       <button
         onClick={onGenerate}
         disabled={!originalImage || !prompt.trim() || isLoading}
@@ -351,17 +392,7 @@ const EditorView: React.FC<EditorViewProps> = ({
           </>
         )}
       </button>
-       {error && (
-          <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-              <div className="flex">
-                  <div className="py-1"><AlertTriangleIcon className="h-5 w-5 text-red-500 mr-3" /></div>
-                  <div>
-                      <p className="font-bold">Error</p>
-                      <p className="text-sm">{error}</p>
-                  </div>
-              </div>
-          </div>
-      )}
+      <ErrorDisplay error={error} />
     </div>
     <ResultDisplay result={editedResult} isLoading={isLoading} loadingMessage={loadingMessage} prompt={prompt} onDownload={onDownload} onCopyPrompt={onCopyPrompt} />
   </div>
@@ -395,30 +426,16 @@ const CombineView: React.FC<CombineViewProps> = ({
         <ImageUploader onImageUpload={onImageUpload} originalImage={originalImage} isLoading={isLoading} />
         <ImageUploader onImageUpload={onImage2Upload} originalImage={originalImage2} isLoading={isLoading} />
       </div>
-       <div>
-        <label htmlFor="prompt-combine" className="block text-sm font-medium text-[var(--text-color-strong)] mb-2">Describe How to Combine Them</label>
-        <div className="relative">
-           <textarea
-              ref={promptInputRef}
-              id="prompt-combine"
-              value={prompt}
-              onChange={onPromptChange}
-              placeholder="e.g., 'Place the person from image 1 into the background of image 2.'"
-              className="w-full p-3 pr-24 border border-[var(--border-color)] rounded-lg bg-[var(--input-bg-color)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition-shadow resize-none overflow-hidden"
-              rows={3}
-              disabled={isLoading}
-            />
-            <button 
-              onClick={onImprovePrompt}
-              disabled={isLoading || !prompt.trim()}
-              className="absolute top-2 right-2 flex items-center px-3 py-1.5 bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-xs font-semibold rounded-full hover:bg-[var(--accent-color)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Improve prompt with AI"
-            >
-              <SparklesIcon className="w-4 h-4 mr-1"/>
-              Improve
-            </button>
-        </div>
-      </div>
+       <PromptInput
+          prompt={prompt}
+          onPromptChange={onPromptChange}
+          onImprovePrompt={onImprovePrompt}
+          isLoading={isLoading}
+          promptInputRef={promptInputRef}
+          id="prompt-combine"
+          label="Describe How to Combine Them"
+          placeholder="e.g., 'Place the person from image 1 into the background of image 2.'"
+       />
        <button
         onClick={onGenerate}
         disabled={!originalImage || !originalImage2 || !prompt.trim() || isLoading}
@@ -436,17 +453,7 @@ const CombineView: React.FC<CombineViewProps> = ({
           </>
         )}
       </button>
-      {error && (
-        <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-          <div className="flex">
-            <div className="py-1"><AlertTriangleIcon className="h-5 w-5 text-red-500 mr-3" /></div>
-            <div>
-              <p className="font-bold">Error</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <ErrorDisplay error={error} />
     </div>
     <ResultDisplay result={editedResult} isLoading={isLoading} loadingMessage={loadingMessage} prompt={prompt} onDownload={onDownload} onCopyPrompt={onCopyPrompt} />
   </div>
@@ -733,17 +740,7 @@ const VideoView: React.FC<VideoViewProps> = ({
                     </>
                     )}
                 </button>
-                {error && (
-                    <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-                        <div className="flex">
-                            <div className="py-1"><AlertTriangleIcon className="h-5 w-5 text-red-500 mr-3" /></div>
-                            <div>
-                                <p className="font-bold">Error</p>
-                                <p className="text-sm">{error}</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                <ErrorDisplay error={error} />
             </div>
             <ResultDisplay result={editedResult} isLoading={isLoading} loadingMessage={loadingMessage} prompt={prompt} onDownload={onDownload} onCopyPrompt={onCopyPrompt} />
         </div>
@@ -1075,20 +1072,30 @@ const App: React.FC = () => {
   }, [theme]);
   
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    // FIX: Changed type of interval to be compatible with setInterval return type in different environments (browser vs. node).
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (isLoading) {
-      const messages = activeTab === 'Video' ? videoLoadingMessages : wittyLoadingMessages;
-      setLoadingMessage(messages[0]);
-      interval = setInterval(() => {
-        setLoadingMessage(prev => {
-          const currentIndex = messages.indexOf(prev);
-          const nextIndex = (currentIndex + 1) % messages.length;
-          return messages[nextIndex];
-        });
-      }, 2500);
+      // Don't start the witty messages interval if a specific, non-witty message is already set.
+      if (wittyLoadingMessages.includes(loadingMessage) || videoLoadingMessages.includes(loadingMessage) || loadingMessage === '') {
+        const messages = activeTab === 'Video' ? videoLoadingMessages : wittyLoadingMessages;
+        // Set initial message immediately
+        if (loadingMessage === '') {
+            setLoadingMessage(messages[0]);
+        }
+        interval = setInterval(() => {
+          setLoadingMessage(prev => {
+            const currentIndex = messages.indexOf(prev);
+            const nextIndex = (currentIndex + 1) % messages.length;
+            return messages[nextIndex];
+          });
+        }, 2500);
+      }
     }
-    return () => clearInterval(interval);
-  }, [isLoading, activeTab]);
+    return () => {
+        if (interval) clearInterval(interval);
+    };
+  }, [isLoading, activeTab, loadingMessage]);
+
 
   const fetchCommunityPrompts = useCallback(async () => {
     setIsCommunityLoading(true);
@@ -1114,17 +1121,27 @@ const App: React.FC = () => {
 
   const handleImageUpload = async (image: OriginalImage | null) => {
     setOriginalImage(image);
-    setOriginalVideo(null); // Clear video if image is uploaded
+    setOriginalVideo(null);
+    setImageGender('unknown'); // Reset on new image
+
     if (image) {
+        if (isLoading) return; // Safeguard against uploads during an ongoing operation
+
+        setIsLoading(true);
+        setLoadingMessage("Analyzing image...");
+        setError(null);
+        
         try {
             const isMale = await classifyImageForMale(image.file);
             setImageGender(isMale ? 'male' : 'female');
         } catch (e) {
             console.error("Gender classification failed:", e);
+            // Non-critical error, so we don't show a blocking message to the user
             setImageGender('unknown');
+        } finally {
+            setIsLoading(false);
+            setLoadingMessage(""); // Clear specific message
         }
-    } else {
-        setImageGender('unknown');
     }
   };
   
@@ -1135,6 +1152,7 @@ const App: React.FC = () => {
   const handleVideoUpload = (video: OriginalVideo | null) => {
     setOriginalVideo(video);
     setOriginalImage(null); // Clear image if video is uploaded
+    setImageGender('unknown'); // Reset for consistency
   };
 
   const handleUserInfoSubmit = (info: UserInfo) => {
